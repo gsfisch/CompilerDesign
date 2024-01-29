@@ -1,6 +1,9 @@
 #include "tacs.h"
 
 TAC* tacCreateIF(TAC* code0, TAC* code1);
+TAC* tacCreateWHILE(TAC* code0, TAC* code1);
+TAC* tacCreateCODE(TAC* code0, HASH_NODE* symbol);
+
 HASH_NODE* makeLabel(void);
 
 TAC* tacCreate(int type, HASH_NODE *result, HASH_NODE *operand1, HASH_NODE *operand2)
@@ -62,6 +65,38 @@ void tacPrint(TAC* node)
 
         case TAC_LABEL:
             fprintf(stderr, "LABEL");
+            break;
+
+        case TAC_BEGINFUN:
+            fprintf(stderr, "BEGINFUN");
+            break;
+
+        case TAC_ENDFUN:
+            fprintf(stderr, "ENDFUN");
+            break;
+
+        case TAC_JUMP:
+            fprintf(stderr, "JUMP");
+            break;
+
+        case TAC_CALL:
+            fprintf(stderr, "CALL");
+            break;
+
+        case TAC_ARG:
+            fprintf(stderr, "ARG");
+            break;
+
+        case TAC_RET:
+            fprintf(stderr, "RET");
+            break;
+
+        case TAC_PRINT:
+            fprintf(stderr, "PRINT");
+            break;
+
+        case TAC_READ:
+            fprintf(stderr, "READ");
             break;
 
         default:
@@ -146,6 +181,21 @@ TAC* tacGenerateCode(AST *node)
 
             break;
 
+        case AST_IFELSE:
+            result = tacCreateIF(code[0], code[1]);
+
+            break;
+
+        case AST_WHILE:
+            result = tacCreateWHILE(code[0], code[1]);
+
+            break;
+
+        case AST_CODE:
+            result = tacCreateCODE(code[0], node->symbol);
+
+            break;
+
 
         default: result = tacJoin(code[0], tacJoin(code[1], tacJoin(code[2], code[3])));
     }
@@ -194,4 +244,50 @@ HASH_NODE* makeLabel()
 
     sprintf(buffer, "mY___weirdLlllllaaabell%d", serial++);
     return hashInsert(buffer, SYMBOL_LABEL);
+}
+
+TAC* tacCreateWHILE(TAC* code0, TAC* code1)
+{
+    TAC* point = 0;
+    TAC* jumpTac = 0;
+    TAC* absJumpTac = 0;
+
+    TAC* labelTac = 0;
+    HASH_NODE* newLabel = 0;
+    
+    TAC* absLabelTac = 0;
+    HASH_NODE* absNewLabel = 0;
+
+
+    absNewLabel = makeLabel();
+    newLabel = makeLabel();
+    
+
+    absLabelTac = tacCreate(TAC_LABEL, absNewLabel, 0, 0);
+    labelTac = tacCreate(TAC_LABEL, newLabel, 0, 0);
+    
+    absJumpTac = tacCreate(TAC_JUMP, absNewLabel, 0, 0);
+    jumpTac = tacCreate(TAC_JFALSE, newLabel, code0?code0->result:0, 0);
+    
+
+    
+    code0 = tacJoin(absLabelTac, code0);
+    jumpTac->prev = code0;
+
+    absJumpTac->prev = code1;
+    labelTac->prev = absJumpTac;
+
+    return tacJoin(jumpTac, labelTac);
+}
+
+TAC* tacCreateCODE(TAC* code0, HASH_NODE* symbol)
+{
+    TAC* beginFunTac = tacCreate(TAC_BEGINFUN, symbol, 0, 0);
+    TAC* endFunTac = tacCreate(TAC_ENDFUN, symbol, 0, 0);
+
+    code0 = tacJoin(beginFunTac, code0);
+
+    endFunTac->prev = code0;
+
+    return endFunTac;
 }
