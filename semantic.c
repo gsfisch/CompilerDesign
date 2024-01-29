@@ -634,11 +634,14 @@ int interpretExpr(AST *node)
     //if (!node)
     //    return;
 
-
     switch(node->type)
     {
-        case AST_SYMBOL: return atoi( node->symbol->text );
+        case AST_SYMBOL: 
+            if (node->symbol->type == SYMBOL_LIT_INTE || node->symbol->type == SYMBOL_LIT_CARA)
+                return atoi( node->symbol->text );
 
+            else if (node->symbol->type == SYMBOL_SCALAR)
+                return 5;
 
         case AST_ADD:
             return interpretExpr(node->son[0]) + interpretExpr(node->son[1]);
@@ -668,11 +671,24 @@ void checkArraySize(AST *node)
         case AST_ARRAY_ACCESS:
             indexAccessed = interpretExpr(node->son[1]);
 
-            if (indexAccessed >= node->son[0]->symbol->array_size)
+            if (indexAccessed >= node->son[0]->symbol->array_size || indexAccessed <= 0)
             {
                 fprintf(stderr, "Semantic Error: invalid array index for %s\n", node->son[0]->symbol->text);
                 semanticErrors++;
             }
+
+            break;
+
+        case AST_ASG_ARRAY:
+            indexAccessed = interpretExpr(node->son[0]);
+
+            if (indexAccessed >= node->symbol->array_size || indexAccessed <= 0)
+            {
+                fprintf(stderr, "Semantic Error: invalid array index for %s assignment\n", node->symbol->text);
+                semanticErrors++;
+            }
+
+            break;
 
 
         default: break;
@@ -681,4 +697,62 @@ void checkArraySize(AST *node)
 
     for(i = 0; i < MAX_SONS; i++)
         checkArraySize(node->son[i]);
+}
+
+void checkArrayDeclarationTypes(AST* node)
+{
+    int i, data_type = 0;
+
+    if (!node)
+        return;
+
+    switch(node->type)
+    {
+        case AST_ARRAY_CHAR_INIT:
+            data_type = DATATYPE_CHAR;
+
+            checkAllArrayTypes(node->son[1], data_type, 0, node->symbol->array_size);
+
+            break;
+
+        case AST_ARRAY_INT_INIT:
+            data_type = DATATYPE_INT;
+
+            checkAllArrayTypes(node->son[1], data_type, 0, node->symbol->array_size);
+
+            break;
+
+        case AST_ARRAY_FLOAT_INIT:
+            data_type = DATATYPE_FLOAT;
+
+            checkAllArrayTypes(node->son[1], data_type, 0, node->symbol->array_size);
+
+            break;
+
+        default: break;
+    }
+
+    for (i = 0; i < MAX_SONS; i++)
+        checkArrayDeclarationTypes(node->son[i]);
+}
+
+void checkAllArrayTypes(AST* node, int data_type, int number_of_elements, int array_size)
+{
+    int i;
+
+    if (!node)
+        return;
+
+    if (node->type == AST_ARRAY_INIT_ITEM)
+    {
+        number_of_elements++;
+        if (!isCompatible(findExprDataType(node->son[0]), data_type) || number_of_elements > array_size)
+        {
+            fprintf(stderr, "Semantic Error: invalid array initialization\n");
+            semanticErrors++;
+        }
+    }
+
+    for (i = 0; i < MAX_SONS; i++)
+        checkAllArrayTypes(node->son[i], data_type, number_of_elements, array_size);
 }

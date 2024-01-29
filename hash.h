@@ -27,6 +27,9 @@
 #define HASH_SIZE 997
 #define MAX_FUNCTION_PARAMS 20
 
+
+struct value_node;
+
 typedef struct hash_node
 {
     int type;
@@ -34,8 +37,15 @@ typedef struct hash_node
     char *text;
     int array_size;
     int function_datatype_params[MAX_FUNCTION_PARAMS];
+    struct value_node *values;
     struct hash_node *next;
 } HASH_NODE;
+
+typedef struct value_node
+{
+    struct hash_node *value;
+    struct value_node *next;
+} VALUE_NODE;
 
 void hashInit(void);
 int hashAddress(char *text);

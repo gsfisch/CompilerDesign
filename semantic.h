@@ -27,5 +27,7 @@ void findReturnDataType(AST *node, int *answer);
 void setArraySize(AST *node);
 int interpretExpr(AST *node);
 void checkArraySize(AST *node);
+void checkArrayDeclarationTypes(AST* node);
+void checkAllArrayTypes(AST* node, int data_type, int number_of_elements, int array_size);
 
 #endif // SEMANTIC_HEADER
