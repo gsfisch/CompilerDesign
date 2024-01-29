@@ -14,6 +14,14 @@
 #define TAC_JFALSE 8
 #define TAC_LABEL 9
 #define TAC_ARRAY_ACCESS 10
+#define TAC_BEGINFUN 11
+#define TAC_ENDFUN 12
+#define TAC_JUMP 13
+#define TAC_CALL 14
+#define TAC_ARG 15
+#define TAC_RET 16
+#define TAC_PRINT 17
+#define TAC_READ 18
 
 
 typedef struct tac
