@@ -86,6 +86,7 @@ extern FILE* outputFile;
 programa: globalDeclarations codeList			{ $$ = astCreate(AST_ROOT, 0, $1, $2, 0, 0); /*astPrint($$, 0);*/ astDecompilation($$, outputFile);
                                                     check_and_set_declaration($$); check_undeclared(); check_operands($$); check_indexing($$); set_function_datatype_params($$); check_functions_args_and_params($$);
                                                     checkAssignments($$); checkFunctionReturn($$); setArraySize($$); checkArraySize($$);
+													checkArrayDeclarationTypes($$);
 													tacPrintBackwards(tacGenerateCode($$)); }
 	;
 
