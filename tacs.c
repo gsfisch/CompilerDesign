@@ -3,6 +3,7 @@
 TAC* tacCreateIF(TAC* code0, TAC* code1);
 TAC* tacCreateWHILE(TAC* code0, TAC* code1);
 TAC* tacCreateCODE(TAC* code0, HASH_NODE* symbol);
+TAC* tacCreatePRINT(TAC* code0);
 
 HASH_NODE* makeLabel(void);
 
@@ -196,6 +197,16 @@ TAC* tacGenerateCode(AST *node)
 
             break;
 
+        case AST_PRINT_LIT:
+            result = tacCreatePRINT(code[0]);
+
+            break;
+
+        case AST_PRINT_EXPR:
+            result = tacCreatePRINT(code[0]);
+
+            break;
+
 
         default: result = tacJoin(code[0], tacJoin(code[1], tacJoin(code[2], code[3])));
     }
@@ -290,4 +301,13 @@ TAC* tacCreateCODE(TAC* code0, HASH_NODE* symbol)
     endFunTac->prev = code0;
 
     return endFunTac;
+}
+
+TAC* tacCreatePRINT(TAC* code0)
+{
+    TAC* printTac = tacCreate(TAC_PRINT, 0, code0?code0->result:0, 0);
+
+    printTac->prev = code0;
+
+    return printTac;
 }
