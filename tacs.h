@@ -22,6 +22,15 @@
 #define TAC_RET 16
 #define TAC_PRINT 17
 #define TAC_READ 18
+#define TAC_LT 19
+#define TAC_GT 20
+#define TAC_LE 21
+#define TAC_GE 22
+#define TAC_EQ 23
+#define TAC_DIF 24
+#define TAC_AND 25
+#define TAC_OR 26
+#define TAC_NOT 27
 
 
 typedef struct tac

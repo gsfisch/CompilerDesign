@@ -1,9 +1,13 @@
 #include "tacs.h"
 
 TAC* tacCreateIF(TAC* code0, TAC* code1);
+TAC* tacCreateIFELSE(TAC* code0, TAC* code1, TAC* code2);
 TAC* tacCreateWHILE(TAC* code0, TAC* code1);
 TAC* tacCreateCODE(TAC* code0, HASH_NODE* symbol);
 TAC* tacCreatePRINT(TAC* code0);
+TAC* tacCreateRET(TAC* code0);
+TAC* tacCreateINPUT(AST* node);
+TAC* tacCreateCALL(TAC* code0, HASH_NODE* symbol);
 
 HASH_NODE* makeLabel(void);
 
@@ -100,6 +104,42 @@ void tacPrint(TAC* node)
             fprintf(stderr, "READ");
             break;
 
+        case TAC_LT:
+            fprintf(stderr, "LT");
+            break;
+
+        case TAC_GT:
+            fprintf(stderr, "GT");
+            break;
+
+        case TAC_LE:
+            fprintf(stderr, "LE");
+            break;
+
+        case TAC_GE:
+            fprintf(stderr, "GE");
+            break;
+
+        case TAC_EQ:
+            fprintf(stderr, "EQ");
+            break;
+
+        case TAC_DIF:
+            fprintf(stderr, "DIF");
+            break;
+
+        case TAC_AND:
+            fprintf(stderr, "AND");
+            break;
+
+        case TAC_OR:
+            fprintf(stderr, "OR");
+            break;
+
+        case TAC_NOT:
+            fprintf(stderr, "NOT");
+            break;
+
         default:
             fprintf(stderr, "UNKNOWN");
             break;
@@ -134,9 +174,11 @@ TAC* tacGenerateCode(AST *node)
 
     switch(node->type)
     {
+        case AST_STRING:
         case AST_SYMBOL:
             result = tacCreate(TAC_SYMBOL, node->symbol, 0, 0);
             break;
+
 
         case AST_ARRAY_ACCESS:
             result = tacCreate(TAC_ARRAY_ACCESS, node->son[0]->symbol, 0, 0);
@@ -166,6 +208,64 @@ TAC* tacGenerateCode(AST *node)
 
             break;
 
+        case AST_LT:
+            result = tacJoin(tacJoin(code[0], code[1]), 
+                tacCreate(TAC_LT, makeTemp(), code[0]?code[0]->result:0, code[1]?code[1]->result:0));
+
+            break;
+
+        case AST_GT:
+            result = tacJoin(tacJoin(code[0], code[1]), 
+                tacCreate(TAC_GT, makeTemp(), code[0]?code[0]->result:0, code[1]?code[1]->result:0));
+
+            break;
+
+        case AST_LE:
+            result = tacJoin(tacJoin(code[0], code[1]), 
+                tacCreate(TAC_LE, makeTemp(), code[0]?code[0]->result:0, code[1]?code[1]->result:0));
+
+            break;
+
+        case AST_GE:
+            result = tacJoin(tacJoin(code[0], code[1]), 
+                tacCreate(TAC_GE, makeTemp(), code[0]?code[0]->result:0, code[1]?code[1]->result:0));
+
+            break;
+
+        case AST_EQ:
+            result = tacJoin(tacJoin(code[0], code[1]), 
+                tacCreate(TAC_EQ, makeTemp(), code[0]?code[0]->result:0, code[1]?code[1]->result:0));
+
+            break;
+
+        case AST_DIF:
+            result = tacJoin(tacJoin(code[0], code[1]), 
+                tacCreate(TAC_DIF, makeTemp(), code[0]?code[0]->result:0, code[1]?code[1]->result:0));
+
+            break;
+
+        case AST_AND:
+            result = tacJoin(tacJoin(code[0], code[1]), 
+                tacCreate(TAC_AND, makeTemp(), code[0]?code[0]->result:0, code[1]?code[1]->result:0));
+
+            break;
+
+        case AST_OR:
+            result = tacJoin(tacJoin(code[0], code[1]), 
+                tacCreate(TAC_OR, makeTemp(), code[0]?code[0]->result:0, code[1]?code[1]->result:0));
+
+            break;
+
+        case AST_NOT:
+            result = tacJoin(tacJoin(code[0], code[1]), 
+                tacCreate(TAC_NOT, makeTemp(), code[0]?code[0]->result:0, code[1]?code[1]->result:0));
+
+            break;
+
+        case AST_FUN_CALL:
+            result = tacCreateCALL(code[0], node->symbol);
+
+            break;
 
         case AST_ASG:
             result = tacJoin(code[0], tacCreate(TAC_ASG, node->symbol, code[0]?code[0]->result:0, 0));
@@ -183,7 +283,7 @@ TAC* tacGenerateCode(AST *node)
             break;
 
         case AST_IFELSE:
-            result = tacCreateIF(code[0], code[1]);
+            result = tacCreateIFELSE(code[0], code[1], code[2]);
 
             break;
 
@@ -196,6 +296,11 @@ TAC* tacGenerateCode(AST *node)
             result = tacCreateCODE(code[0], node->symbol);
 
             break;
+            
+        case AST_RETURN:
+            result = tacCreateRET(code[0]);
+            
+            break;
 
         case AST_PRINT_LIT:
             result = tacCreatePRINT(code[0]);
@@ -206,6 +311,18 @@ TAC* tacGenerateCode(AST *node)
             result = tacCreatePRINT(code[0]);
 
             break;
+            
+        case AST_INPUT:
+            result = tacCreateINPUT(node->son[0]);
+
+            break;
+
+        case AST_EXPR_LIST_ITEM:
+            result = tacJoin(tacJoin(code[0], 
+                tacCreate(TAC_ARG, 0, code[0]?code[0]->result:0, 0)), code[1]);
+
+            break;
+
 
 
         default: result = tacJoin(code[0], tacJoin(code[1], tacJoin(code[2], code[3])));
@@ -310,4 +427,122 @@ TAC* tacCreatePRINT(TAC* code0)
     printTac->prev = code0;
 
     return printTac;
+}
+
+TAC* tacCreateIFELSE(TAC* code0, TAC* code1, TAC* code2)
+{
+    /*
+    TAC* jumpTac = 0;
+    TAC* labelTac = 0;
+    HASH_NODE* newLabel = 0;
+
+    newLabel = makeLabel();
+
+    jumpTac = tacCreate(TAC_JFALSE, newLabel, code0?code0->result:0, 0);
+
+    jumpTac->prev = code0;
+    labelTac = tacCreate(TAC_LABEL, newLabel, 0, 0);
+    labelTac->prev = code1;
+
+    return tacJoin(jumpTac, labelTac);
+    */
+    
+    TAC* elseLabelTac = 0;
+    TAC* endIfElseLabelTac = 0;
+    TAC* jumpFalseTac = 0;
+    TAC* absJumpTac = 0;
+    
+    HASH_NODE* elseLabelSymbol = 0;
+    HASH_NODE* endIfElseLabelSymbol = 0;
+    
+    
+    
+    // code0 <-- JF
+    elseLabelSymbol = makeLabel();
+    elseLabelTac = tacCreate(TAC_LABEL, elseLabelSymbol, 0, 0);
+    jumpFalseTac = tacCreate(TAC_JFALSE, elseLabelSymbol, code0?code0->result:0, 0);
+    jumpFalseTac->prev = code0;
+
+    
+    // code2 <-- endIfElseLabelTac
+    endIfElseLabelSymbol = makeLabel();
+    endIfElseLabelTac = tacCreate(TAC_LABEL, endIfElseLabelSymbol, 0, 0);
+    absJumpTac = tacCreate(TAC_JUMP, endIfElseLabelSymbol, 0, 0);
+    endIfElseLabelTac->prev = code2;
+    
+    
+    // elseLabelTac <-- code2
+    code2 = tacJoin(elseLabelTac, code2);
+    
+    
+    // JUMP <-- elseLabelTac
+    elseLabelTac->prev = absJumpTac;
+    
+    
+    // code1 <-- JUMP
+    absJumpTac->prev = code1;
+    
+    
+    // JF <-- code1
+    code1 = tacJoin(jumpFalseTac, code1);
+    
+    
+    return endIfElseLabelTac;
+}
+
+TAC* tacCreateRET(TAC* code0)
+{
+    TAC* retTac = tacCreate(TAC_RET, 0, code0?code0->result:0, 0);  // mudar operandos?
+    
+    retTac->prev = code0;
+    
+    return retTac;
+}
+
+TAC* tacCreateINPUT(AST* node)
+{
+	TAC* inputTac = 0;	
+	static int serialChar = 0;
+	static int serialInt = 0;
+	static int serialFloat = 0;
+    	char buffer[256] = "";
+    	
+    	switch(node->type)
+    	{
+    	    case AST_INPUT_ARG_CHAR:
+    	        sprintf(buffer, "mY___weirdChaaaaaaaAaar%d", serialChar++);
+    	        break;
+    	        
+    	    case AST_INPUT_ARG_INT:
+    	        sprintf(buffer, "mY___weirdInnnnnnnnNnnnnnt%d", serialInt++);
+    	        break;
+    	        
+    	    case AST_INPUT_ARG_FLOAT:
+    	    	sprintf(buffer, "mY___weirdFloaaaaaaaaAaaaaat%d", serialFloat++);
+    	        break;
+    	}
+
+	inputTac = tacCreate(TAC_READ, 0, hashInsert(buffer, SYMBOL_INPUT), 0);
+	
+	return inputTac;
+}
+
+TAC* tacCreateCALL(TAC* code0, HASH_NODE* symbol)
+{
+    int i = 0, numberOfParam = 0;
+    
+    TAC* callTac = 0;/*
+    TAC* listOfArgs[MAX_FUNCTION_PARAMS];
+
+    for (i = 0; i < MAX_FUNCTION_PARAMS; i++)
+    {
+        if (symbol->function_datatype_params[i] != 0)
+            numberOfParam++;
+    }
+    
+    */
+    callTac = tacCreate(TAC_CALL, symbol, 0, 0);
+    callTac->prev = code0;
+
+    return callTac;
 }
